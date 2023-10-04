@@ -4,6 +4,8 @@ from django.dispatch import receiver
 from django.db.models.signals import post_save
 from django_cpf_cnpj.fields import CPFField, CNPJField
 from django.utils import timezone
+from django.core.validators import MinValueValidator, MaxValueValidator
+import datetime
 # Create your models here.
 
 class ClientUser(models.Model):
@@ -30,7 +32,6 @@ def save_user_custom(sender, instance, created, **kwargs):
 class EmployeeUser(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     cpf = CPFField(masked=True)
-    workstation_fk = models.ForeignKey("Workstation", on_delete=models.CASCADE,)
     addres = models.CharField(max_length=200)
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=2)
@@ -49,7 +50,11 @@ def save_user_custom(sender, instance, created, **kwargs):
     instance.customuser.save()
 
 class Workstation(models.Model):
-    name = models.CharField(max_length=200)
+    stations = [
+        ("workstation1", "WORKSTATION 1"),
+        ("workstation2", "WORKSTATION 2"),
+    ]
+    name = models.CharField(max_length=200, choices=stations)
     availability = models.DateField
 
     def __str__(self):
@@ -64,10 +69,15 @@ class Automobile(models.Model):
         ("bus", "BUS"),
     ]
 
-    type = models.CharField(choices=auto_types)
+    type = models.CharField(max_length=20, choices=auto_types)
     automaker = models.CharField(max_length=200)
     model = models.CharField(max_length=200)
-    year = models.Year
+    year = models.IntegerField(
+        validators=[
+            MinValueValidator(1900),  # Replace with your desired minimum year
+            MaxValueValidator(datetime.date.today().year)  # Maximum year is the current year
+        ]
+    )
 
     def __str__(self):
         return self.model
@@ -82,7 +92,7 @@ class Service(models.Model):
 class Product(models.Model):
     name = models.CharField(max_length=200)
     manufacturer = models.CharField(max_length=200)
-    cod = models.PositiveIntegerField(max_digits=5)
+    cod = models.PositiveIntegerField
     purchase_value = models.DecimalField(max_digits=6, decimal_places=2)
     sell_value = models.DecimalField(max_digits=6, decimal_places=2)
     stock_unit = models.PositiveIntegerField
@@ -106,21 +116,25 @@ class Payment(models.Model):
         ("canceled", "Canceled"),
     ]
 
+    reserve_fk = models.ForeignKey("Reserve", on_delete=models.CASCADE)
     type = models.CharField(max_length=20, choices=payment_types)
     status = models.CharField(max_length=20, choices=payment_status)
     desc = models.DecimalField(max_digits=3, decimal_places=2)
     final_value = models.DecimalField(max_digits=3, decimal_places=2)
 
+    def __str__(self):
+        return self.final_value
+    
 class Reserve(models.Model):
-    datetime = models.DateTimeField
-    client = models.ForeignKey("ClientUser", on_delete=models.CASCATE)
-    workstation_fk = models.ForeignKey("Workstation", on_delete=models.CASCATE)
+    datetime = models.DateTimeField(auto_now_add=True)
+    client = models.ForeignKey("ClientUser", on_delete=models.CASCADE)
+    workstation_fk = models.ForeignKey("Workstation", on_delete=models.CASCADE)
 
     def __str__(self):
         return self.datetime
     
 class Maintenance(models.Model):
-    reserve_fk = models.ForeignKey("Reserve", on_delete=models.CASCATE)
+    reserve_fk = models.ForeignKey("Reserve", on_delete=models.CASCADE)
     auto_fk = models.ForeignKey("Automobile", on_delete=models.CASCADE) 
     responsible = models.ForeignKey("EmployeeUser", on_delete=models.CASCADE)
     total = models.DecimalField(max_digits=6, decimal_places=2)
@@ -128,17 +142,17 @@ class Maintenance(models.Model):
     def __str__(self):
         return self.total
 
-class ProductMaintence(models.Model):
+class ProductMaintenance(models.Model):
     unit = models.PositiveIntegerField
-    product_fk = models.ForeignKey("Product", on_delete=models.CASCATE)
+    product_fk = models.ForeignKey("Product", on_delete=models.CASCADE)
     sub_total = models.DecimalField(max_digits=6, decimal_places=2)
 
     def __str__(self):
         return self.sub_total
 
-class ServiceMaintence(models.Model):
+class ServiceMaintenance(models.Model):
     unit = models.PositiveIntegerField
-    service_fk = models.ForeignKey("Service", on_delete=models.CASCATE)
+    service_fk = models.ForeignKey("Service", on_delete=models.CASCADE)
     sub_total = models.DecimalField(max_digits=6, decimal_places=2)
 
     def __str__(self):
