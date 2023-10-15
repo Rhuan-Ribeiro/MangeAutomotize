@@ -155,5 +155,5 @@ class ServiceMaintenance(models.Model):
     service_fk = models.ForeignKey("Service", on_delete=models.CASCADE)
     sub_total = models.DecimalField(max_digits=6, decimal_places=2)
 
-    def __str__(self):
+    def __float__(self):
         return self.sub_total
